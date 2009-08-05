@@ -1,0 +1,53 @@
+Personal Monit
+==============
+
+After testing a number of combinations of service management tools, process
+monitoring tools and daemonisation techniques I came to the conclusion that a
+combination of monit, daemon, logrotate and cron is about as good as it gets:
+
+ * monit to explicitly start and stop daemons.
+ * daemon to correctly daemonise a "normal" process and write the log file to
+   a central location.
+ * daemon to mmediately respawn a process if it dies.
+ * periodic monit to check process resource usage and response.
+ * periodic monit to ensure daemon stays running.
+ * logrotate to keep log files under control.
+
+That little lot is not a lot of fun to set up so I wrote pmonit to take care
+of the boring stuff.
+
+Basic Use
+=========
+
+WARNING: pmonit currently overwrites files. It does not try to nicely update
+any files that exist so if you've made changes then you need to handle that
+yourself.
+
+pmonit currenyl has two commands: init and service.
+
+    Usage: pmonit [options] init|service
+
+    Options:
+      -h, --help            show this help message and exit
+      --home=HOME           home direcory
+      --email=EMAIL         email address
+      --smtp-server=SMTP_SERVER
+                            SMTP server
+
+The 'init' command initialises your home directory (by default) with a
+cron+monit+logrotate shell that will manage services you add later.
+
+    pmonit --email me@example.com init
+
+'init' creates a simple etc and var directory structure and prints some crontab
+entries to the console for you to add.
+
+The 'service' adds the basic files for a new service:
+
+    pmonit service myservice
+
+For now, the service is a daemonised 'sleep 15'. Simply edit
+~/etc/monit.d/myservice and change the 'start program' line to start your
+process instead. Most of the time you'll only need to touch the bit after the
+'--' daemon arg.
+

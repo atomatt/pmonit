@@ -1,0 +1,162 @@
+#!/usr/bin/env python
+
+import getpass
+import os
+import os.path
+import optparse
+import stat
+import string
+
+
+##
+# Templates of things to add.
+#
+
+
+DIRS = ['etc/monit.d', 'etc/logrotate.d',
+        'var/lib', 'var/lib/logrotate', 'var/log', 'var/run']
+
+
+FILES = {
+
+    # ~/.monitrc
+    '.monitrc':
+"""set mailserver {smtp_server}
+set alert {email}
+set logfile {home}/var/log/monit.log
+
+include {home}/etc/monit.d/*
+""",
+
+    # ~/.daemonrc
+    '.daemonrc':
+"""* pidfiles={home}/var/run
+""",
+
+    # ~/etc/logrotate.conf
+    'etc/logrotate.conf':
+"""daily
+rotate 4
+create
+compress
+
+include {home}/etc/logrotate.d
+""",
+
+    # ~/etc/logrotate.d/monit
+    'etc/logrotate.d/monit':
+"""{home}/var/log/monit.log {{
+}}
+""",
+}
+
+
+CRONTABS = [
+    "@reboot /usr/bin/monit",
+    "*/4 * * * * /usr/bin/monit",
+    "@daily /usr/sbin/logrotate -s {home}/var/lib/logrotate/status {home}/etc/logrotate.conf",
+]
+
+
+SERVICE_FILES = {
+
+    # etc/monit.d/{service}
+    'etc/monit.d/{service}':
+"""check process {service}
+    with pidfile {home}/var/run/{service}.pid
+    start program = "/usr/bin/env /usr/bin/daemon --name {service} --respawn --output={home}/var/log/{service}.log -- sleep 15"
+    stop program = "/usr/bin/daemon --name {service} --stop"
+""",
+
+    # etc/logrotate.d/{service}
+    'etc/logrotate.d/{service}':
+"""{home}/var/log/{service}.log {{
+}}
+""",
+}
+
+
+##
+# Functions that write things.
+#
+
+
+def build_dirs(home):
+    home = os.path.abspath(home)
+    for dir in DIRS:
+        fulldir = os.path.join(home, dir)
+        if not os.path.exists(fulldir):
+            os.makedirs(fulldir)
+
+
+def build_files(home, email, smtp_server):
+    home = os.path.abspath(home)
+    for name, template in FILES.iteritems():
+        fullname = os.path.join(home, name)
+        f = open(fullname, 'wt')
+        f.write(template.format(home=home, email=email, smtp_server=smtp_server))
+        f.close()
+        os.chmod(fullname, stat.S_IRUSR | stat.S_IWUSR)
+
+
+def add_crontabs(home):
+    home = os.path.abspath(home)
+    for crontab in CRONTABS:
+        print crontab.format(home=home)
+
+
+def build_service_files(home, service_name):
+    home = os.path.abspath(home)
+    for name, template in SERVICE_FILES.iteritems():
+        name = name.format(service=service_name)
+        fullname = os.path.join(home, name)
+        f = open(fullname, 'wt')
+        f.write(template.format(home=home, service=service_name))
+        f.close()
+
+
+##
+# "Subcommand" handlers.
+
+
+def init(options):
+    build_dirs(home=options.home)
+    build_files(options.home, email=options.email, smtp_server=options.smtp_server)
+    add_crontabs(options.home)
+
+
+def service(options, service_name):
+    build_service_files(options.home, service_name)
+
+
+##
+#  Command line handling.
+
+
+def make_option_parser():
+    parser = optparse.OptionParser(usage="Usage: %prog [options] init|service")
+    parser.add_option('--home', dest='home', help='home direcory',
+                      default=os.path.expanduser('~'))
+    parser.add_option('--email', dest='email', help='email address',
+                      default=getpass.getuser()+'@localhost')
+    parser.add_option('--smtp-server', dest='smtp_server', help='SMTP server',
+                      default='localhost')
+    return parser
+
+
+if __name__ == '__main__':
+    option_parser = make_option_parser()
+    options, args = option_parser.parse_args()
+    if len(args) < 1:
+        option_parser.print_help()
+    elif args[0] == 'init':
+        if len(args) > 1:
+            option_parser.print_help()
+        else:
+            init(options)
+    elif args[0] == 'service':
+        if len(args) != 2:
+            option_parser.print_help()
+        else:
+            service(options, args[1])
+
