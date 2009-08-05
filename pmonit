@@ -52,8 +52,8 @@ include {home}/etc/logrotate.d
 
 
 CRONTABS = [
-    "@reboot /usr/bin/monit",
-    "*/4 * * * * /usr/bin/monit",
+    "@reboot /usr/sbin/monit",
+    "*/4 * * * * /usr/sbin/monit",
     "@daily /usr/sbin/logrotate -s {home}/var/lib/logrotate/status {home}/etc/logrotate.conf",
 ]
 
