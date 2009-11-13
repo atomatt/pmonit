@@ -37,7 +37,7 @@ include {home}/etc/monit.d/*
     'etc/logrotate.conf':
 """daily
 rotate 4
-create
+copytruncate
 compress
 
 include {home}/etc/logrotate.d
