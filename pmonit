@@ -39,6 +39,7 @@ include {home}/etc/monit.d/*
 rotate 4
 copytruncate
 compress
+notifempty
 
 include {home}/etc/logrotate.d
 """,
