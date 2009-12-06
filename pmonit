@@ -31,6 +31,8 @@ include {home}/etc/monit.d/*
     # ~/.daemonrc
     '.daemonrc':
 """* pidfiles={home}/var/run
+* errlog={home}/var/log/daemon.log
+* respawn,acceptable=60,delay=60,limit=3
 """,
 
     # ~/etc/logrotate.conf
@@ -49,12 +51,18 @@ include {home}/etc/logrotate.d
 """{home}/var/log/monit.log {{
 }}
 """,
+
+    # ~/etc/logrotate.d/daemon
+    'etc/logrotate.d/daemon':
+"""{home}/var/log/daemon.log {{
+}}
+""",
 }
 
 
 CRONTABS = [
     "@reboot /usr/sbin/monit",
-    "*/4 * * * * /usr/sbin/monit",
+    "*/12 * * * * /usr/sbin/monit",
     "@daily /usr/sbin/logrotate -s {home}/var/lib/logrotate/status {home}/etc/logrotate.conf",
 ]
 
@@ -65,7 +73,7 @@ SERVICE_FILES = {
     'etc/monit.d/{service}':
 """check process {service}
     with pidfile {home}/var/run/{service}.pid
-    start program = "/usr/bin/env /usr/bin/daemon --name {service} --respawn --output={home}/var/log/{service}.log -- sleep 15"
+    start program = "/usr/bin/env /usr/bin/daemon --name {service} --output={home}/var/log/{service}.log -- sleep 15"
     stop program = "/usr/bin/daemon --name {service} --stop"
 """,
 
